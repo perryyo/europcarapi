@@ -82,7 +82,65 @@ class ApiController extends ControllerBase
 		}
 		return $newArray;
 	}
+	
+	
+	/**
+	  * Check Quote Parameters.
+	  *
+	  * @param array $params represents post parameters of getQuoteAction.
+	  *
+	  * @return null or object.
+	*/
+	
+	public function checkQuote($params)
+	{
+		$flag = '';
+			
+		$checkParamArr['carCategory'] =  isset($params['carCategory']) ? $params['carCategory'] : '';
+		$checkParamArr['checkin.stationID'] = 	isset($params['checkin_stationID']) ? $params['checkin_stationID'] : '';
+		$checkParamArr['checkout.stationID'] = 	isset($params['checkout_stationID']) ? $params['checkout_stationID'] : '';
+		$checkParamArr['checkin.time'] =  isset($params['checkin_time']) ? $params['checkin_time'] : '';
+		$checkParamArr['checkout.time'] =  isset($params['checkout_time']) ? $params['checkout_time'] : '';
+		$checkParamArr['countryCode'] =  isset($params['countryCode']) ? $params['countryCode'] : '';
 
+		if (isset($checkParamArr) && !empty($checkParamArr)){
+			foreach ($checkParamArr as $key => $value) {
+				$value = trim($value);
+				if ($value == ''){
+					if($flag == ''){
+						$flag .= 'xrs.missing.'.$key.'.key';
+					}else{
+						$flag .= ' , xrs.missing.'.$key.'.key';
+					}
+				}
+			}
+		}
+
+		return $flag;
+    }
+	
+	/**
+	  * Convert datetime to required format.
+	  *
+	  * @param string $time represents datetime in "d/m/Y H:i" format.
+	  * @param string $format represents in which format $time needs to be converted.
+	  *
+	  * @return null or string.
+	*/
+	
+	public function datetimeFormat($time, $format)
+	{
+		if(isset($time) && $time!='')
+		{
+			$newDate = DateTime::createFromFormat("d/m/Y H:i", $time);
+			$result = $newDate->format($format); 
+		} else {
+			$result = '';	
+		}
+		
+		return $result;
+    }
+	
 	/**
 	  * Get list of countries with country code and country description.
 	  *
@@ -154,7 +212,7 @@ class ApiController extends ControllerBase
 				}
 			}
 		} else {
-			$xml = $this->error('','parameters');
+			$xml = $this->error('parameters');
 		}
 		$xmlArr = $this->xml2array($xml);
 		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
@@ -206,8 +264,8 @@ class ApiController extends ControllerBase
 	  * @param string carCategory, param need to be passed, as for example { carCategory : IDAR }.
 	  * @param string checkout_stationID, param need to be passed, as for example { checkout_stationID : MSQR02 }.
 	  * @param string checkin_stationID, param need to be passed, as for example { checkin_stationID : MSQR02 }.
-	  * @param datetime format (d/m/Y H:i) checkout_time, param need to be passed, as for example { checkout_time : 01/09/2018 10:00 }.
-	  * @param datetime format (d/m/Y H:i) checkin_time, param need to be passed, as for example { checkin_time : 31/08/2018 23:00 }.
+	  * @param datetime format (d/m/Y H:i) checkout_time, param need to be passed, as for example { checkout_time : 04/09/2018 10:00 }.
+	  * @param datetime format (d/m/Y H:i) checkin_time, param need to be passed, as for example { checkin_time : 03/09/2018 23:00 }.
 	  * @param string countryCode, param need to be passed, as for example { countryCode : AE }.
 	  *
 	  * @return json.
@@ -215,70 +273,33 @@ class ApiController extends ControllerBase
 
 	public function getQuoteAction()
 	{
-		$flag = ''; 
+		$checkRes = ''; 
 		$params = $this->request->getPost();
 		if (isset($params) && !empty($params)){
-			$carCategory =  isset($params['carCategory']) ? $params['carCategory'] : '';
-			$checkin_stationID = 	isset($params['checkin_stationID']) ? $params['checkin_stationID'] : '';
-			$checkout_stationID = 	isset($params['checkout_stationID']) ? $params['checkout_stationID'] : '';
-			$checkin_time =  isset($params['checkin_time']) ? $params['checkin_time'] : '';
-			$checkout_time =  isset($params['checkout_time']) ? $params['checkout_time'] : '';
-			$countryCode =  isset($params['countryCode']) ? $params['countryCode'] : '';
-
-			$checkParamArr = array(
-				'carCategory' => $carCategory,
-				'checkin.stationID' => $checkin_stationID,
-				'checkout.stationID' => $checkout_stationID,
-				'checkin.time' => $checkin_time,
-				'checkout.time' => $checkout_time,
-				'countryCode' => $countryCode
-			);
-
-			if (isset($checkParamArr) && !empty($checkParamArr)){
-				foreach ($checkParamArr as $key => $value) {
-					$value = trim($value);
-					if ($value == ''){
-						if($flag == ''){
-							$flag .= 'xrs.missing.'.$key.'.key';
-						}else{
-							$flag .= ' , xrs.missing.'.$key.'.key';
-						}
-					}
-				}
-			}
-
-			if ($flag != ''){
+			
+			$checkRes = $this->checkQuote($params);
+			if ($checkRes != ''){
 				$attr = 'attributes';
 				$element = new stdClass;
 				$element->serviceResponse =  new stdClass;
-				$element->serviceResponse->$attr = array('errorCode' => $flag,'returnCode' => 'KO');
+				$element->serviceResponse->$attr = array('errorCode' => $checkRes,'returnCode' => 'KO');
 				$xml = $element;
 			} else {
-				if ($checkin_time != ''){
-					$newDate = DateTime::createFromFormat("d/m/Y H:i", $checkin_time);
-					$check_in_date = $newDate->format('Ymd'); 
-					$check_in_time = $newDate->format('Hi'); 
-				} else {
-					$check_in_date = $check_in_time =  '';
-				}
+				$checkin_time 		=   $params['checkin_time'];
+				$checkout_time 		=   $params['checkout_time'];
+				$check_in_date 		= 	$this->datetimeFormat($checkin_time, 'Ymd'); 
+				$check_in_time 		= 	$this->datetimeFormat($checkin_time, 'Hi');
+				$check_out_date 	= 	$this->datetimeFormat($checkout_time, 'Ymd');
+				$check_out_time 	= 	$this->datetimeFormat($checkout_time, 'Hi');
 
-				if($checkout_time != ''){
-					$newDate = DateTime::createFromFormat("d/m/Y H:i", $checkout_time);
-					$check_out_date = $newDate->format('Ymd'); 
-					$check_out_time = $newDate->format('Hi'); 
-				}else{
-					$check_out_date = $check_out_time =  '';
-				}
-
-				$paramArr['carCategory'] = $carCategory;
-				$paramArr['checkout_stationID'] = $checkout_stationID;
+				$paramArr['carCategory'] = $params['carCategory'];
+				$paramArr['checkout_stationID'] = $params['checkout_stationID'];
 				$paramArr['check_in_date'] = $check_in_date;
 				$paramArr['check_in_time'] = $check_in_time;
-				$paramArr['checkin_stationID'] = $checkin_stationID;
-
+				$paramArr['checkin_stationID'] = $params['checkin_stationID'];
 				$paramArr['check_out_date'] = $check_out_date;
 				$paramArr['check_out_time'] = $check_out_time;
-				$paramArr['countryCode'] = $countryCode;
+				$paramArr['countryCode'] = $params['countryCode'];
 
 				$url = Utils::quoteservice($paramArr);
 				$xml = Utils::curl($url);
