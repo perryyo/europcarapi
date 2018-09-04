@@ -140,6 +140,24 @@ class ApiController extends ControllerBase
 		
 		return $result;
     }
+
+    /**
+	  * Conversion from xml to json.
+	  *
+	  * @param object $xml represents xml object.
+	  *
+	  * @return json.
+	*/
+
+	public function responseJson($xml)
+	{
+		$xmlArr = $this->xml2array($xml);
+		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
+
+		header('Content-Type: application/json');
+		return json_encode($arr);
+	}
+
 	
 	/**
 	  * Get list of countries with country code and country description.
@@ -152,11 +170,7 @@ class ApiController extends ControllerBase
 	{
 		$url = Utils::countryservice();
 		$data = Utils::curl($url);
-		$xmlArr = $this->xml2array($data);
-		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
-
-		header('Content-Type: application/json');
-		echo json_encode($arr);
+		echo $this->responseJson($data);
 	}
 
 	/**
@@ -170,21 +184,23 @@ class ApiController extends ControllerBase
 	public function getCitiesAction()
 	{
 		$params = $this->request->getPost();
-		if (isset($params) && !empty($params)){	
-			if(isset($params['countryCode']) && $params['countryCode'] != ''){
-				$url = Utils::cityservice($params['countryCode']);
-				$xml = Utils::curl($url);
-			}else{
-				$xml = $this->error('country', 'key');
-			}
-		} else {
-			$xml = $this->error('parameters');
-		}
-		$xmlArr = $this->xml2array($xml);
-		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
 
-		header('Content-Type: application/json');
-		echo json_encode($arr);
+		if (!isset($params) || empty($params)){
+	        $xml = $this->error('parameters');
+	        echo $this->responseJson($xml);
+	        return false;
+		}
+
+		if(!isset($params['countryCode']) || $params['countryCode'] == ''){
+			$xml = $this->error('country', 'key');
+			echo $this->responseJson($xml);
+	        return false;
+		}
+		
+		
+		$url = Utils::cityservice($params['countryCode']);
+		$xml = Utils::curl($url);
+		echo $this->responseJson($xml);
 	}
 
 	/**
@@ -199,7 +215,14 @@ class ApiController extends ControllerBase
 	public function getStationsAction()
 	{
 		$params = $this->request->getPost();
-		if (isset($params) && !empty($params)){	
+
+		if (!isset($params) || empty($params)){
+	        $xml = $this->error('parameters');
+	        echo $this->responseJson($xml);
+	        return false;
+		}
+
+
 			if((isset($params['countryCode']) && $params['countryCode'] != '') && (isset($params['cityName']) && $params['cityName'] != '')){
 				$url = Utils::stationservice($params);
 				$xml = Utils::curl($url);
@@ -211,14 +234,8 @@ class ApiController extends ControllerBase
 					$xml = $this->error('city','key');
 				}
 			}
-		} else {
-			$xml = $this->error('parameters');
-		}
-		$xmlArr = $this->xml2array($xml);
-		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
 
-		header('Content-Type: application/json');
-		echo json_encode($arr);
+		echo $this->responseJson($xml);
 	}
 
 	/* Method : Get Car categories list wrt station code and date */
@@ -251,11 +268,7 @@ class ApiController extends ControllerBase
 			$xml = $this->error('parameters');		
 		}
 
-		$xmlArr = $this->xml2array($xml);
-		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
-
-		header('Content-Type: application/json');
-		echo json_encode($arr);
+		echo $this->responseJson($xml);
 	}
 
 	/**
@@ -275,44 +288,49 @@ class ApiController extends ControllerBase
 	{
 		$checkRes = ''; 
 		$params = $this->request->getPost();
-		if (isset($params) && !empty($params)){
-			
-			$checkRes = $this->checkQuote($params);
-			if ($checkRes != ''){
-				$attr = 'attributes';
-				$element = new stdClass;
-				$element->serviceResponse =  new stdClass;
-				$element->serviceResponse->$attr = array('errorCode' => $checkRes,'returnCode' => 'KO');
-				$xml = $element;
-			} else {
-				$checkin_time 		=   $params['checkin_time'];
-				$checkout_time 		=   $params['checkout_time'];
-				$check_in_date 		= 	$this->datetimeFormat($checkin_time, 'Ymd'); 
-				$check_in_time 		= 	$this->datetimeFormat($checkin_time, 'Hi');
-				$check_out_date 	= 	$this->datetimeFormat($checkout_time, 'Ymd');
-				$check_out_time 	= 	$this->datetimeFormat($checkout_time, 'Hi');
 
-				$paramArr['carCategory'] = $params['carCategory'];
-				$paramArr['checkout_stationID'] = $params['checkout_stationID'];
-				$paramArr['check_in_date'] = $check_in_date;
-				$paramArr['check_in_time'] = $check_in_time;
-				$paramArr['checkin_stationID'] = $params['checkin_stationID'];
-				$paramArr['check_out_date'] = $check_out_date;
-				$paramArr['check_out_time'] = $check_out_time;
-				$paramArr['countryCode'] = $params['countryCode'];
+		if (!isset($params) || empty($params)){
+	        $xml = $this->error('parameters');
 
-				$url = Utils::quoteservice($paramArr);
-				$xml = Utils::curl($url);
-			}
-		}else{
-			$xml = $this->error('parameters');
+	        echo $this->responseJson($xml);
+	        return false;
 		}
 
-		$xmlArr = $this->xml2array($xml);
-		$arr = $this->replaceKey($xmlArr, 'attributes', '@attributes');
+		
+		$checkRes = $this->checkQuote($params);
 
-		header('Content-Type: application/json');
-		echo json_encode($arr);
+		if (!empty($checkRes)){
+
+	        $attr = 'attributes';
+			$element = new stdClass;
+			$element->serviceResponse =  new stdClass;
+			$element->serviceResponse->$attr = array('errorCode' => $checkRes,'returnCode' => 'KO');
+			$xml = $element;
+
+			echo $this->responseJson($xml);
+	        return false;
+		}
+
+		$checkin_time 		=   $params['checkin_time'];
+		$checkout_time 		=   $params['checkout_time'];
+		$check_in_date 		= 	$this->datetimeFormat($checkin_time, 'Ymd'); 
+		$check_in_time 		= 	$this->datetimeFormat($checkin_time, 'Hi');
+		$check_out_date 	= 	$this->datetimeFormat($checkout_time, 'Ymd');
+		$check_out_time 	= 	$this->datetimeFormat($checkout_time, 'Hi');
+
+		$paramArr['carCategory'] = $params['carCategory'];
+		$paramArr['checkout_stationID'] = $params['checkout_stationID'];
+		$paramArr['check_in_date'] = $check_in_date;
+		$paramArr['check_in_time'] = $check_in_time;
+		$paramArr['checkin_stationID'] = $params['checkin_stationID'];
+		$paramArr['check_out_date'] = $check_out_date;
+		$paramArr['check_out_time'] = $check_out_time;
+		$paramArr['countryCode'] = $params['countryCode'];
+
+		$url = Utils::quoteservice($paramArr);
+		$xml = Utils::curl($url);
+
+		echo $this->responseJson($xml);
 	}
 
 }
