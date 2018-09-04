@@ -313,10 +313,10 @@ class ApiController extends ControllerBase
 
 		$checkin_time 		=   $params['checkin_time'];
 		$checkout_time 		=   $params['checkout_time'];
-		$check_in_date 		= 	$this->datetimeFormat($checkin_time, 'Ymd'); 
-		$check_in_time 		= 	$this->datetimeFormat($checkin_time, 'Hi');
-		$check_out_date 	= 	$this->datetimeFormat($checkout_time, 'Ymd');
-		$check_out_time 	= 	$this->datetimeFormat($checkout_time, 'Hi');
+		$check_in_date 		=   $this->datetimeFormat($checkin_time, 'Ymd'); 
+		$check_in_time 		=   $this->datetimeFormat($checkin_time, 'Hi');
+		$check_out_date 	=   $this->datetimeFormat($checkout_time, 'Ymd');
+		$check_out_time 	=   $this->datetimeFormat($checkout_time, 'Hi');
 
 		$paramArr['carCategory'] = $params['carCategory'];
 		$paramArr['checkout_stationID'] = $params['checkout_stationID'];
